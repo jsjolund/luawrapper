@@ -1674,7 +1674,7 @@ private:
             -> boost::optional<ReturnType>
         {
             if (!test(state, index))
-                return boost::none;
+                return boost::optional<ReturnType>();
             return boost::optional<ReturnType>(*static_cast<TType*>(lua_touserdata(state, index)));
         }
 
@@ -2509,7 +2509,7 @@ struct LuaContext::Reader<std::nullptr_t>
         -> boost::optional<std::nullptr_t>
     {
         if (!lua_isnil(state, index))
-            return boost::none;
+            return boost::optional<std::nullptr_t>();
         return nullptr;
     }
 };
@@ -2529,13 +2529,13 @@ struct LuaContext::Reader<
             int success;
             auto value = lua_tointegerx(state, index, &success);
             if (success == 0)
-                return boost::none;
+                return boost::optional<TType>();
             return static_cast<TType>(value);
 
 #       else
 
             if (!lua_isnumber(state, index))
-                return boost::none;
+                return boost::optional<TType>();
             return static_cast<TType>(lua_tointeger(state, index));
 
 #       endif
@@ -2557,13 +2557,13 @@ struct LuaContext::Reader<
             int success;
             auto value = lua_tonumberx(state, index, &success);
             if (success == 0)
-                return boost::none;
+                return boost::optional<TType>();
             return static_cast<TType>(value);
 
 #       else
 
             if (!lua_isnumber(state, index))
-                return boost::none;
+                return boost::optional<TType>();
             return static_cast<TType>(lua_tonumber(state, index));
 
 #       endif
@@ -2578,7 +2578,7 @@ struct LuaContext::Reader<bool>
         -> boost::optional<bool>
     {
         if (!lua_isboolean(state, index))
-            return boost::none;
+            return boost::optional<bool>();
         return lua_toboolean(state, index) != 0;
     }
 };
@@ -2595,7 +2595,7 @@ struct LuaContext::Reader<std::string>
         size_t len;
         const auto val = lua_tolstring(state, index, &len);
         if (val == 0)
-            return boost::none;
+            return boost::optional<std::string>();
         return std::string(val, len);
     }
 };
@@ -2611,7 +2611,7 @@ struct LuaContext::Reader<
         -> boost::optional<TType>
     {
         if (!lua_isnumber(state, index) || fmod(lua_tonumber(state, index), 1.) != 0)
-            return boost::none;
+            return boost::optional<TType>();
         return static_cast<TType>(lua_tointeger(state, index));
     }
 };
@@ -2627,7 +2627,7 @@ struct LuaContext::Reader<LuaContext::LuaFunctionCaller<TRetValue (TParameters..
         -> boost::optional<ReturnType>
     {
         if (lua_isfunction(state, index) == 0 && lua_isuserdata(state, index) == 0)
-            return boost::none;
+            return boost::optional<ReturnType>();
         return ReturnType(state, index);
     }
 };
@@ -2645,7 +2645,7 @@ struct LuaContext::Reader<std::function<TRetValue (TParameters...)>>
 			return boost::optional<std::function<TRetValue (TParameters...)>>{std::move(f)};
 		}
 
-        return boost::none;
+        return boost::optional<std::function<TRetValue (TParameters...)>>();
     }
 };
 
@@ -2657,7 +2657,7 @@ struct LuaContext::Reader<std::vector<std::pair<TType1,TType2>>>
         -> boost::optional<std::vector<std::pair<TType1, TType2>>>
     {
         if (!lua_istable(state, index))
-            return boost::none;
+            return boost::optional<std::vector<std::pair<TType1, TType2>>>();
 
         std::vector<std::pair<TType1, TType2>> result;
 
@@ -2695,7 +2695,7 @@ struct LuaContext::Reader<std::map<TKey,TValue>>
         -> boost::optional<std::map<TKey,TValue>>
     {
         if (!lua_istable(state, index))
-            return boost::none;
+            return boost::optional<std::map<TKey,TValue>>();
 
         std::map<TKey,TValue> result;
 
@@ -2733,7 +2733,7 @@ struct LuaContext::Reader<std::unordered_map<TKey,TValue>>
         -> boost::optional<std::unordered_map<TKey,TValue>>
     {
         if (!lua_istable(state, index))
-            return boost::none;
+            return boost::optional<std::unordered_map<TKey,TValue>>();
 
         std::unordered_map<TKey,TValue> result;
 
@@ -2778,7 +2778,7 @@ struct LuaContext::Reader<boost::optional<TType>>
             return boost::optional<TType>{boost::none};
         if (auto&& other = Reader<TType>::read(state, index))
             return std::move(other);
-        return boost::none;
+        return boost::optional<boost::optional<TType>>();
     }
 };
 
@@ -2813,7 +2813,7 @@ private:
         static auto read(lua_State* /*state*/, int /*index*/)
             -> boost::optional<ReturnType> 
         {
-            return boost::none;
+            return boost::optional<ReturnType>();
         }
     };
 
@@ -2856,13 +2856,13 @@ struct LuaContext::Reader<std::tuple<TFirst, TOthers...>,
         -> boost::optional<ReturnType>
     {
         if (maxSize <= 0)
-            return boost::none;
+            return boost::optional<ReturnType>();
 
         auto firstVal = Reader<TFirst>::read(state, index);
         auto othersVal = Reader<std::tuple<TOthers...>>::read(state, index + 1, maxSize - 1);
         
         if (!firstVal || !othersVal)
-            return boost::none;
+            return boost::optional<ReturnType>();
 
         return std::tuple_cat(std::tuple<TFirst>(*firstVal), std::move(*othersVal));
     }
@@ -2883,14 +2883,14 @@ struct LuaContext::Reader<std::tuple<TFirst, TOthers...>,
     {
         auto othersVal = Reader<std::tuple<TOthers...>>::read(state, index + 1, maxSize - 1);
         if (!othersVal)
-            return boost::none;
+            return boost::optional<ReturnType>();
         
         if (maxSize <= 0)
             return std::tuple_cat(std::tuple<TFirst>(), std::move(*othersVal));
         
         auto firstVal = Reader<TFirst>::read(state, index);
         if (!firstVal)
-            return boost::none;
+            return boost::optional<ReturnType>();
 
         return std::tuple_cat(std::tuple<TFirst>(*firstVal), std::move(*othersVal));
     }
